@@ -4,7 +4,7 @@ import mongoose from 'mongoose';
 import authRoutes from './routes/authRoutes.js';
 import reviewRoutes from './routes/reviewRoutes.js';
 import restaurantRoutes from './routes/restaurantRoutes.js';
-
+import rankingRoutes from './routes/rankingRoutes.js';
 dotenv.config();
 const app = express();
 app.use(express.json());
@@ -13,6 +13,7 @@ app.use(express.json());
 app.use('/api/auth', authRoutes);
 app.use('/api/reviews', reviewRoutes);
 app.use('/api/restaurants', restaurantRoutes);
+app.use('/api/rankings', rankingRoutes);
 
 // Basic route
 app.get('/', (req, res) => {
