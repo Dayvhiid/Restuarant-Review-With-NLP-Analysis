@@ -5,10 +5,12 @@
   "main": "index.js",
   "type": "module",
   "scripts": {
-    "test": "jest --detectOpenHandles --forceExit",
-    "test:watch": "jest --watch --detectOpenHandles",
+    "test": "node --experimental-vm-modules node_modules/jest/bin/jest.js --detectOpenHandles --forceExit",
+    "test:watch": "node --experimental-vm-modules node_modules/jest/bin/jest.js --watch --detectOpenHandles",
     "start": "node index.js",
-    "dev": "nodemon index.js"
+    "dev": "nodemon index.js",
+    "seed:restaurants": "node seeders/restaurantSeeder.js",
+    "clear:restaurants": "node seeders/restaurantSeeder.js clear"
   },
   "keywords": [],
   "author": "",
@@ -18,11 +20,11 @@
     "dotenv": "^17.2.1",
     "express": "^5.1.0",
     "jsonwebtoken": "^9.0.2",
-    "mongoose": "^8.17.0"
+    "mongoose": "^8.17.0",
+    "node-nlp": "^5.0.0-alpha.5"
   },
   "devDependencies": {
     "jest": "^29.7.0",
-    "supertest": "^7.0.0",
-    "mongodb-memory-server": "^10.1.2"
+    "supertest": "^7.1.4"
   }
 }

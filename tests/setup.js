@@ -1,25 +1,23 @@
-import { MongoMemoryServer } from 'mongodb-memory-server';
 import mongoose from 'mongoose';
 import dotenv from 'dotenv';
 
-// Load environment variables
-dotenv.config();
-
-let mongoServer;
+// Load test environment variables
+dotenv.config({ path: '.env.test' });
 
 // Setup before all tests
 beforeAll(async () => {
-  // Start in-memory MongoDB instance
-  mongoServer = await MongoMemoryServer.create();
-  const mongoUri = mongoServer.getUri();
+  // Connect to the test database
+  const mongoUri = process.env.MONGO_URI;
   
-  // Connect to the in-memory database
-  await mongoose.connect(mongoUri);
+  if (mongoose.connection.readyState === 0) {
+    await mongoose.connect(mongoUri);
+    console.log('Connected to test database');
+  }
 });
 
 // Cleanup after each test
 afterEach(async () => {
-  // Clear all collections
+  // Clear all collections after each test
   const collections = mongoose.connection.collections;
   for (const key in collections) {
     await collections[key].deleteMany({});
@@ -28,15 +26,13 @@ afterEach(async () => {
 
 // Cleanup after all tests
 afterAll(async () => {
-  // Close database connection
-  await mongoose.connection.dropDatabase();
-  await mongoose.connection.close();
-  
-  // Stop the in-memory MongoDB instance
-  if (mongoServer) {
-    await mongoServer.stop();
+  // Clear all test data one final time
+  const collections = mongoose.connection.collections;
+  for (const key in collections) {
+    await collections[key].deleteMany({});
   }
+  
+  // Close database connection
+  await mongoose.connection.close();
+  console.log('Disconnected from test database');
 });
-
-// Increase timeout for database operations
-jest.setTimeout(30000);
