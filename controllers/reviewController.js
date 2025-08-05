@@ -1,5 +1,6 @@
 import { SentimentAnalyzer } from "node-nlp";
 import Restaurant from '../models/Restaurant.js';
+import Comment from '../models/Comment.js';
 
 const submitReview = async (req, res) => {
   try {
@@ -39,25 +40,40 @@ const submitReview = async (req, res) => {
       sentimentLabel = 'negative';
     }
 
-    // Return sentiment analysis results
-    res.status(200).json({
+    // Create and save the comment
+    const newComment = new Comment({
+      content: comment,
+      user: userId,
+      restaurant: resturantId,
+      sentimentAnalysis: {
+        score: sentimentScore,
+        label: sentimentLabel,
+        confidence: Math.abs(sentimentScore)
+      }
+    });
+
+    await newComment.save();
+
+    // Add comment reference to restaurant
+    restaurant.comments.push(newComment._id);
+    await restaurant.save();
+
+    // Return the saved comment with populated data
+    const populatedComment = await Comment.findById(newComment._id)
+      .populate('user', 'name email')
+      .populate('restaurant', 'name location cuisine');
+
+    res.status(201).json({
       success: true,
       data: {
-        restaurantId: resturantId,
-        restaurant: {
-          name: restaurant.name,
-          location: restaurant.location,
-          cuisine: restaurant.cuisine
-        },
-        userId: userId,
-        comment: comment,
+        comment: populatedComment,
         sentimentAnalysis: {
           score: sentimentScore,
           label: sentimentLabel,
           confidence: Math.abs(sentimentScore)
         }
       },
-      message: 'Sentiment analysis completed successfully'
+      message: 'Comment submitted and analyzed successfully'
     });
 
   } catch (error) {
@@ -69,5 +85,94 @@ const submitReview = async (req, res) => {
   }
 };
 
-export { submitReview };
+// Get all comments for a restaurant
+const getRestaurantComments = async (req, res) => {
+  try {
+    const { restaurantId } = req.params;
+    const { page = 1, limit = 10 } = req.query;
 
+    // Verify restaurant exists
+    const restaurant = await Restaurant.findById(restaurantId);
+    if (!restaurant) {
+      return res.status(404).json({
+        success: false,
+        message: 'Restaurant not found'
+      });
+    }
+
+    // Get paginated comments
+    const comments = await Comment.find({ restaurant: restaurantId })
+      .populate('user', 'name email')
+      .sort({ createdAt: -1 })
+      .limit(limit * 1)
+      .skip((page - 1) * limit);
+
+    const totalComments = await Comment.countDocuments({ restaurant: restaurantId });
+
+    res.status(200).json({
+      success: true,
+      data: {
+        restaurant: {
+          id: restaurant._id,
+          name: restaurant.name,
+          location: restaurant.location,
+          cuisine: restaurant.cuisine
+        },
+        comments,
+        pagination: {
+          currentPage: parseInt(page),
+          totalPages: Math.ceil(totalComments / limit),
+          totalComments,
+          hasNext: page < Math.ceil(totalComments / limit),
+          hasPrev: page > 1
+        }
+      }
+    });
+
+  } catch (error) {
+    console.error('Get comments error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Server error while fetching comments'
+    });
+  }
+};
+
+// Get user's comments
+const getUserComments = async (req, res) => {
+  try {
+    const userId = req.user._id;
+    const { page = 1, limit = 10 } = req.query;
+
+    const comments = await Comment.find({ user: userId })
+      .populate('restaurant', 'name location cuisine')
+      .sort({ createdAt: -1 })
+      .limit(limit * 1)
+      .skip((page - 1) * limit);
+
+    const totalComments = await Comment.countDocuments({ user: userId });
+
+    res.status(200).json({
+      success: true,
+      data: {
+        comments,
+        pagination: {
+          currentPage: parseInt(page),
+          totalPages: Math.ceil(totalComments / limit),
+          totalComments,
+          hasNext: page < Math.ceil(totalComments / limit),
+          hasPrev: page > 1
+        }
+      }
+    });
+
+  } catch (error) {
+    console.error('Get user comments error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Server error while fetching user comments'
+    });
+  }
+};
+
+export { submitReview, getRestaurantComments, getUserComments };
